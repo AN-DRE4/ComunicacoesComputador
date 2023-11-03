@@ -75,7 +75,7 @@ def handle_client(client_socket):
         data = client_socket.recv(1024)
         if not data:
             break
-        ic(f"Received: {data.decode().split(',')}")
+        ic(data.decode().split(','))
         if data.decode().split(',')[0] == "1":
             header = createHeader(client_socket.getpeername()[0], data.decode().split(","))
             # print all elements of the header
