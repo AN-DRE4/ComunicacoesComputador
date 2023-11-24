@@ -20,8 +20,6 @@ class FS_Tracker_Protocol():
     # create a dictionary with the client ip as key and the list header as value
     def __init__(self):
         self.dicionario = {}
-        
-
 
 def read_file_to_list(file_path):
     try:
@@ -70,7 +68,7 @@ def createHeader(ip, data):
     header.data = data[4:]
     return header
 
-def handle_client(client_socket):
+def handle_client(client_socket, tracker):
     while True:
         data = client_socket.recv(1024)
         if not data:
@@ -85,13 +83,24 @@ def handle_client(client_socket):
             ic(header.network_condition)
             ic(header.latency_time)
             ic(header.data)
+            # add the header to the dictionary
+            tracker.dicionario[header.ip] = header
             message = "Message received"
             client_socket.send(message.encode())
         elif data.decode().split(',')[0] == "2":
+            # go through the dictionary and find all blocks of the file
+            for key, value in tracker.dicionario.items():
+                if data.decode().split(',')[1] in value.data and key != client_socket.getpeername()[0]:
+                    # send the blocks to the client
+                    message = str(value.data[1:])
+                    message = message.replace("[", "")
+                    message = message.replace("]", "")
+                    message = message.replace("'", "")
+                    client_socket.send(message.encode())
             message = "Message received 2"
             client_socket.send(message.encode())
 
-def connectToClient():
+def connectToClient(tracker):
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(("0.0.0.0", 8888))
     server.listen(5)
@@ -102,13 +111,13 @@ def connectToClient():
     while True:
         client_socket, addr = server.accept()
         print(f"Accepted connection from {addr[0]}:{addr[1]}")
-        client_handler = threading.Thread(target=handle_client, args=(client_socket, ))
+        client_handler = threading.Thread(target=handle_client, args=(client_socket, tracker,))
         client_handler.start()
 
 
 def main():
     tracker = FS_Tracker_Protocol()
-    connectToClient()
+    connectToClient(tracker)
 
 
 if __name__ == "__main__":
