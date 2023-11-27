@@ -1,13 +1,15 @@
 import socket
+import os
 import threading
 from icecream import ic  # For debugging
 import pickle  # For serialization
 
 class FS_Node:
-    def __init__(self, node_id, shared_folder):
-        self.node_id = node_id
-        self.shared_folder = shared_folder  # {file_name: [blocks]}
-        self.tracker_address = ('10.0.1.10', 5000)  # Assume tracker is running locally
+    def __init__(self, node_ip, shared_files, shared_folder):
+        self.node_ip = node_ip
+        self.shared_folder = shared_folder
+        self.shared_files = shared_files  # {file_name: [blocks]}
+        self.tracker_address = ('10.0.0.10', 5000)  # Assume tracker is running locally
         self.node_udp_port = 8888  # Node's UDP port for file transfer
 
     def connect_to_tracker(self):
@@ -23,7 +25,7 @@ class FS_Node:
     def register_files(self, tracker_socket):
         if tracker_socket:
             try:
-                data = {'node_id': self.node_id, 'files': self.shared_folder, 'flag': 1}
+                data = {'node_ip': self.node_ip, 'files': self.shared_files, 'flag': 1}
                 serialized_data = pickle.dumps(data)
                 tracker_socket.send(serialized_data)
                 print("Files registered with FS_Tracker.")
@@ -53,31 +55,45 @@ class FS_Node:
         for node_address in file_locations:
             try:
                 ic("Gonna ask for the file")
-                node_udp_socket.sendto(file_name.encode())
+                node_udp_socket.sendto(file_name.encode(), (node_address[0], self.node_udp_port))
                 ic("Now waiting for the file")
-                data, addr = node_udp_socket.recvfrom(4096)  # Assuming a max data size of 4096 bytes
-                ic("Got the file")
+                # receive data while there is data to receive
+                '''while True:
+                    data, addr = node_udp_socket.recvfrom(32768)  # Assuming a max data size of 4096 bytes
+                    ic("Received data")
+                    if not data:
+                        break
+                    file_content += data
+                    ic("Added data to file_content")'''
+                data, addr = node_udp_socket.recvfrom(32768)  # Assuming a max data size of 4096 bytes
+                ic("Received data")
                 file_content += data
-                ic(file_content)
             except Exception as e:
                 print(f"Failed to download file from {node_address}: {e}")
-
-        # Save the downloaded file content or process it further
-        # Example: Save file to disk, reconstruct file content from blocks, etc.
+        ic(file_content)
+        # make file_content the actual file content
+        file_content = file_content.decode()
+        # now save the file content to the shared folder with the file name
+        file_path = os.path.join(self.shared_folder, file_name)
+        with open(file_path, 'w') as file:
+            file.write(file_content)
+        # also add the file to the shared_files dict
+        self.shared_files[file_name] = file_name
         print(f"Downloaded {file_name} successfully.")
+        ic(self.shared_files)
 
     def send_file(self):
         node_udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        node_udp_socket.bind(('10.0.1.10', self.node_udp_port))
+        node_udp_socket.bind((self.node_ip, self.node_udp_port))
 
         while True:
             try:
                 data, addr = node_udp_socket.recvfrom(4096)
                 file_name = data.decode()
 
-                # Assuming the file content is retrieved from self.shared_folder
-                file_content = self.shared_folder.get(file_name, b"File not found")
-                node_udp_socket.sendto(file_content, addr)
+                # Assuming the file content is retrieved from self.shared_files
+                file_content = self.shared_files.get(file_name)
+                node_udp_socket.sendto(file_content.encode(), addr)
             except Exception as e:
                 print(f"Failed to send file: {e}")
 
@@ -90,14 +106,15 @@ class FS_Node:
                 file_name = input("Enter file name to download: ")
                 # self.request_file(file_name, tracker_socket)
                 file_locations = self.get_file_locations(file_name, tracker_socket)
+                ic(file_locations)
                 udp_thread_get = threading.Thread(target=self.download_file, args=(file_name, file_locations,))
                 udp_thread_get.start()
                 # self.download_file(file_name, file_locations)
 
     def handle_udp_requests(self):
         node_udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        ip = input("Enter the IP address of the node: ")
-        node_udp_socket.bind((ip, self.node_udp_port))
+        # ip = input("Enter the IP address of the node: ")
+        node_udp_socket.bind((self.node_ip, self.node_udp_port))
 
         while True:
             try:
@@ -105,10 +122,12 @@ class FS_Node:
                 file_name = data.decode()
 
                 # Process UDP request for file and send file content
-                file_content = self.shared_folder.get(file_name, b"File not found")
-                node_udp_socket.sendto(file_content, addr)
+                #file_content = self.shared_files.get(file_name, b"File not found")
+                # make file_content the actual file content
+                file_content = self.read_file(file_name)
+                node_udp_socket.sendto(file_content.encode(), addr)
             except Exception as e:
-                print(f"Failed to handle UDP request: {e}")
+                ic(f"Failed to handle UDP request: {e}")
 
     def get_file_locations(self, file_name, tracker_socket):
         if tracker_socket:
@@ -126,3 +145,15 @@ class FS_Node:
             print("No connection to FS_Tracker.")
 
     # probably not finished but it's a start
+
+
+    def read_file(self, file_name):
+        try:
+            file_path = os.path.join(self.shared_folder, file_name)
+            with open(file_path, 'r') as file:
+                contents = file.read()
+                return contents
+        except FileNotFoundError:
+            return "File not found"
+        except Exception as e:
+            return f"An error occurred: {str(e)}"

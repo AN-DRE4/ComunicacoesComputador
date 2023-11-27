@@ -6,7 +6,7 @@ from icecream import ic
 class FS_Tracker:
     def __init__(self):
         self.node_registry = {}  # {node_ip: {address, files}}
-        self.tracker_address = ('10.0.1.10', 5000)  # Tracker's address
+        self.tracker_address = ('10.0.0.10', 5000)  # Tracker's address
 
     def start_tracker(self):
         tracker_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

@@ -17,7 +17,7 @@ if __name__ == "__main__":
     # tracker_ip = input("Enter the IP address of the tracker: ")
     files = get_files(shared_folder)
     print(files)
-    node = FS_Node(node_id=ip, shared_folder=files)  # Provide a unique node_id
+    node = FS_Node(node_ip=ip, shared_files=files, shared_folder=shared_folder)  # Provide a unique node_id
     tracker_socket = node.connect_to_tracker()
 
     if tracker_socket:
