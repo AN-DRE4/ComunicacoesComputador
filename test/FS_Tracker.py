@@ -55,10 +55,14 @@ class FS_Tracker:
 
     def get_file_locations(self, file_name):
         file_locations = []
+        file_size = None
         for node_ip, node_info in self.node_registry.items():
             if file_name in node_info['files']:
+                if file_size is None:
+                    file_size = node_info['files'][file_name]['size']
                 file_locations.append(node_info['address'])
-        return file_locations
+        # return the file locations and the file size
+        return file_locations, file_size
 
     def node_inactive(self, node_ip):
         if node_ip in self.node_registry:

@@ -9,7 +9,8 @@ def get_files(folder_name):
     files = {}
     for file in os.listdir(folder_name):
         if os.path.isfile(os.path.join(folder_name, file)):
-            files[file] = 'full'
+            # files[file] = 'full'
+            files[file] = {'content': 'full', 'size': os.path.getsize(os.path.join(folder_name, file))}
     return files
 
 if __name__ == "__main__":
