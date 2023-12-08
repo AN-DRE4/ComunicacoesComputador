@@ -13,12 +13,6 @@ class FS_Tracker:
         tracker_socket.bind(self.tracker_address)
         tracker_socket.listen(5)
         ic("FS_Tracker started. Waiting for connections...")
-        '''test'''
-
-        # conn, addr = tracker_socket.accept()
-        # ic(f"Connected to node at {addr}")
-
-        '''test'''
 
         while True:
             conn, addr = tracker_socket.accept()
@@ -39,16 +33,16 @@ class FS_Tracker:
                 if serialized_data['flag'] == 4:
                     self.node_registry[conn.getpeername()[0]]['files'].update(serialized_data['files'])
                 file_name = serialized_data.get('file_name')
-                ic(f"Received file name: {file_name}")
-                if file_name:
+                if serialized_data['flag'] == 2:
+                    ic(f"Received file name: {file_name}")
                     file_locations = self.get_file_locations(file_name)
                     serialized_locations = pickle.dumps(file_locations)
                     conn.send(serialized_locations)
-            # print all files in the registry
-            ic("Node Registry:")
-            for node_ip, node_info in self.node_registry.items():
-                ic(f"Node {node_ip}: {node_info['address']}, {node_info['files']}")
-            # conn.close()
+                if serialized_data['flag'] != 2:
+                    ic(serialized_data['flag'])
+                    ic("Node Registry:")
+                    for node_ip, node_info in self.node_registry.items():
+                        ic(node_ip, node_info['address'], node_info['files'])
 
     def register_node(self, node_ip, address, files):
         self.node_registry[node_ip] = {'address': address, 'files': files}
@@ -67,18 +61,4 @@ class FS_Tracker:
     def node_inactive(self, node_ip):
         if node_ip in self.node_registry:
             del self.node_registry[node_ip]
-
-    '''def handle_file_request(self):
-        tracker_udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        tracker_udp_socket.bind(self.tracker_address)
-
-        while True:
-            try:
-                data, addr = tracker_udp_socket.recvfrom(4096)
-                file_name = data.decode()
-                file_locations = self.get_file_locations(file_name)
-                serialized_locations = pickle.dumps(file_locations)
-                tracker_udp_socket.sendto(serialized_locations, addr)
-            except Exception as e:
-                ic(f"Failed to handle file request: {e}")'''
-
+            

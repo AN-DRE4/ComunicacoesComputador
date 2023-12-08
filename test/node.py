@@ -30,6 +30,6 @@ if __name__ == "__main__":
 
     if tracker_socket:
         # node.register_files(tracker_socket)
-        node.start_node(tracker_socket)
+        node.start_node()
     else:
         print("Failed to connect to FS_Tracker.")
