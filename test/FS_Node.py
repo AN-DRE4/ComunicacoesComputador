@@ -41,7 +41,6 @@ class FS_Node:
     def start_node(self):
         udp_thread_send = threading.Thread(target=self.handle_udp_requests_2)
         udp_thread_send.start()
-        ic(self.files_blocks)
         if self.tracker_socket:
             self.register_and_update_files(1)
             while True:
@@ -123,7 +122,6 @@ class FS_Node:
 
         # Join all blocks in order from block_data
         for block_number in range(1, len(block_data) + 1):
-            ic(block_number, block_data[block_number].decode())
             reconstructed_file += block_data[block_number]
 
         # Reconstruct the file from received blocks
@@ -151,7 +149,7 @@ class FS_Node:
                 file_content = self.read_file(file_name_and_block)
                 node_udp_socket.sendto(file_content, addr)
             except Exception as e:
-                ic(f"Failed to handle UDP request: {e}")
+                print(f"Failed to handle UDP request: {e}")
 
     def read_file(self, file_block):
         # got to self.files_blocks and get the file_block
